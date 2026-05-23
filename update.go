@@ -17,14 +17,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.termHeight = msg.Height
 		return m, nil
 
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
+
 	case msgDataLoaded:
 		m.attachData(msg.data, msg.passwd, msg.alterColumn)
 		m.activeRow = 1
 		m.activeColumn = 1
 		m.tableOffset = 0
-		if m.mode == ModeVisibleSelect {
-			// nothing visual to do yet; will show on render
-		} else if m.mode == ModeClipSelect {
+		if m.mode == ModeClipSelect {
 			m.copyActiveToClipboard()
 		}
 		m.currentFocus = focusTable
@@ -78,6 +79,70 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // -----------------------------------------------------------------------
+// Mouse handler
+// -----------------------------------------------------------------------
+
+// handleMouse processes left-click events.
+//
+// Screen layout (Y coordinates, 0-based):
+//
+//	Y=0        top menu bar
+//	Y=1        table top border (┌─…─┐)
+//	Y=2        table header row
+//	Y=3        table separator  (├─…─┤)
+//	Y=4+       table data rows
+func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if msg.Button != tea.MouseButtonLeft || msg.Action != tea.MouseActionPress {
+		return m, nil
+	}
+
+	// Click on the menu bar → switch focus to menu
+	if msg.Y == 0 {
+		m.currentFocus = focusMenu
+		return m, nil
+	}
+
+	// Clicks on the top border, header, or separator are ignored
+	const tableDataStartY = 4
+	if msg.Y < tableDataStartY {
+		return m, nil
+	}
+
+	// Map Y to a data row (0-based index into m.keys)
+	clickedIdx := (msg.Y - tableDataStartY) + m.tableOffset
+	if clickedIdx < 0 || clickedIdx >= len(m.keys) {
+		return m, nil
+	}
+
+	m.activeRow = clickedIdx + 1 // convert to 1-based
+	m.currentFocus = focusTable
+	m.adjustOffset()
+
+	// Map X to a column.
+	// Layout: │<col0>│<col1>│<col2>│…
+	// The leading │ sits at screen column 0; cell content begins at X=1.
+	colWidths := m.computeColWidths()
+	numDataCols := m.numDataCols()
+	totalCols := numDataCols + 2
+	xPos := msg.X - 1 // strip the leading │
+	if xPos >= 0 {
+		cumWidth := 0
+		for c := 0; c < totalCols; c++ {
+			if xPos >= cumWidth && xPos < cumWidth+colWidths[c] {
+				if c >= 1 { // col 0 is the row-number gutter — not selectable
+					m.activeColumn = c
+				}
+				break
+			}
+			cumWidth += colWidths[c] + 1 // +1 for the │ separator
+		}
+	}
+
+	m.onSelectionChanged()
+	return m, nil
+}
+
+// -----------------------------------------------------------------------
 // Table focus
 // -----------------------------------------------------------------------
 
@@ -98,7 +163,7 @@ func (m Model) handleTableKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case ModeClipSelect:
 			m.copyActiveToClipboard()
 		case ModeVisibleEnter:
-			// reveal handled in view; mark row as tracking colour — no special state needed
+			// reveal handled in View
 		}
 		return m, nil
 
@@ -163,8 +228,6 @@ func (m *Model) onSelectionChanged() {
 	switch m.mode {
 	case ModeClipSelect:
 		m.copyActiveToClipboard()
-	case ModeVisibleSelect, ModeVisibleEnter:
-		// hide/reveal handled in View via mode checks
 	}
 }
 
@@ -196,22 +259,18 @@ func (m Model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
-	// Normalize label (Save! → Save)
 	base := strings.TrimSuffix(label, "!")
 
 	switch base {
 	case "Select":
 		if len(m.keys) > 0 {
 			m.currentFocus = focusTable
-			if m.mode == ModeVisibleSelect {
-				// selection-driven reveal — nothing extra
-			} else if m.mode == ModeClipSelect {
+			if m.mode == ModeClipSelect {
 				m.copyActiveToClipboard()
 			}
 		}
 
 	case firstToUpper(modeSet[m.modeIndex]):
-		// Mode button
 		m.modeCursor = m.modeIndex
 		m.currentFocus = focusMode
 
@@ -345,8 +404,6 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 // -----------------------------------------------------------------------
 
 func (m Model) handlePwdEnterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Single field [0], two buttons: Submit / Cancel
-	// Cursor: 0=field, 1=Submit, 2=Cancel
 	switch msg.Type {
 	case tea.KeyTab, tea.KeyDown:
 		m.pwdCursor = (m.pwdCursor + 1) % 3
@@ -360,25 +417,20 @@ func (m Model) handlePwdEnterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyEsc:
-		// Cancel → quit
 		clipboard.WriteAll("")
 		return m, tea.Quit
 	case tea.KeyEnter:
 		if m.pwdCursor == 2 {
-			// Cancel
 			clipboard.WriteAll("")
 			return m, tea.Quit
 		}
-		// Submit (cursor==1 or cursor==0 after typing)
 		return m.submitEnterPassword()
 	case tea.KeyRunes:
 		if m.pwdCursor == 0 {
 			m.pwdInputs[0] += string(msg.Runes)
 		} else if m.pwdCursor == 1 {
-			// Submit
 			return m.submitEnterPassword()
 		} else {
-			// Cancel
 			clipboard.WriteAll("")
 			return m, tea.Quit
 		}
@@ -403,12 +455,11 @@ func (m Model) submitEnterPassword() (tea.Model, tea.Cmd) {
 type msgWrongPassword struct{ title string }
 
 func (m Model) handlePwdNewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Fields: [old(optional), new1, new2], buttons: Submit / Cancel
 	numFields := 2
 	if m.needOldPassword {
 		numFields = 3
 	}
-	totalItems := numFields + 2 // +Submit +Cancel
+	totalItems := numFields + 2
 	switch msg.Type {
 	case tea.KeyTab, tea.KeyDown:
 		m.pwdCursor = (m.pwdCursor + 1) % totalItems
@@ -429,7 +480,6 @@ func (m Model) handlePwdNewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyEnter:
 		if m.pwdCursor == numFields+1 {
-			// Cancel
 			m.currentFocus = focusMenu
 			return m, nil
 		}
@@ -469,9 +519,6 @@ func (m Model) submitNewPassword() (tea.Model, tea.Cmd) {
 	}
 	m.passwd = p1
 	m.save()
-	if !m.needOldPassword {
-		// creating new page — stay on menu
-	}
 	m.pwdInputs = [3]string{}
 	m.pwdCursor = 0
 	m.currentFocus = focusMenu
@@ -497,7 +544,6 @@ func (m *Model) openEditForm() {
 	if count < 2 {
 		count = 2
 	}
-	// Pad editValues to count+1 (name + count fields + one extra)
 	for len(m.editValues) <= count {
 		m.editValues = append(m.editValues, "")
 	}
@@ -505,10 +551,7 @@ func (m *Model) openEditForm() {
 	m.currentFocus = focusEdit
 }
 
-// editNumFields returns 1(name) + len(editValues)
 func (m *Model) editNumFields() int { return 1 + len(m.editValues) }
-
-// editTotalItems = fields + 4 buttons (Submit, Hide/Reveal, Clear, Cancel)
 func (m *Model) editTotalItems() int { return m.editNumFields() + 4 }
 
 func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -559,11 +602,10 @@ func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleEditButton() (tea.Model, tea.Cmd) {
 	numFields := m.editNumFields()
-	btnIdx := m.editCursor - numFields // 0=Submit,1=Hide/Reveal,2=Clear,3=Cancel
+	btnIdx := m.editCursor - numFields
 	switch btnIdx {
 	case 0: // Submit
 		if len(m.editKey) > 0 {
-			// trim trailing empty values
 			v := append([]string{}, m.editValues...)
 			for len(v) > 0 && len(v[len(v)-1]) == 0 {
 				v = v[:len(v)-1]
@@ -628,7 +670,6 @@ func (m Model) handleModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyEnter, tea.KeyLeft, tea.KeyRight, tea.KeyTab:
-		// "Yes/OK" or "No/Cancel"
 		if msg.Type == tea.KeyEnter || msg.Type == tea.KeyLeft || msg.Type == tea.KeyTab {
 			if m.confirmYesFn != nil {
 				cmd := m.confirmYesFn()
@@ -675,9 +716,6 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // -----------------------------------------------------------------------
 
 func (m Model) handleGitResultKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Any key dismisses
 	m.currentFocus = focusMenu
 	return m, nil
 }
-
-
