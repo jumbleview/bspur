@@ -3,11 +3,9 @@ package main
 import (
 	"os"
 	"os/exec"
-	//	"github.com/go-git/go-git/v5"
-	//	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-// CheckGit returns nil if directory contains git working git tree, error otherwise
+// CheckGit returns nil if directory contains a valid git working tree, error otherwise
 func CheckGit(directory string) error {
 	current, err := os.Getwd()
 	if err != nil {
@@ -27,7 +25,6 @@ func CheckGit(directory string) error {
 
 // PushRemote performs git steps on supplied file in directory: stage, commit, push
 func PushRemote(directory string, fileToCommit string, comments []string) (string, error) {
-	// Opens an already existing repository.
 	current, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -41,22 +38,14 @@ func PushRemote(directory string, fileToCommit string, comments []string) (strin
 	if err != nil {
 		return "Status error:", err
 	}
-
-	// Adds the new file to the staging area.
 	_, err = exec.Command("git", "add", fileToCommit).Output()
 	if err != nil {
 		return "Staging error", err
 	}
-
-	// We can verify the current status of the worktree using the method Status.
-	//Info("git status --porcelain")
 	_, err = exec.Command("git", "status", "--porcelain").Output()
 	if err != nil {
 		return "Status staging error:", err
 	}
-	// Commits the current staging area to the repository, with the new file
-	// just created. We should provide the object.Signature of Author of the
-	// commit.
 	comment := "-m\""
 	for i, c := range comments {
 		comment += c

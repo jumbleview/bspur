@@ -10,8 +10,6 @@ import (
 	"os"
 )
 
-// Credit for code below goes to
-// https://www.thepolyglotdeveloper.com/2018/02/encrypt-decrypt-data-golang-application-crypto-packages/
 func createHash(key string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(key))
@@ -51,7 +49,7 @@ func decrypt(data []byte, passphrase string) ([]byte, error) {
 	return plaintext, err
 }
 
-// EncryptFile takes plain text as byte slice and writes encrypetd file
+// EncryptFile takes plain text as byte slice and writes encrypted file
 func EncryptFile(filename string, data []byte, passphrase string) error {
 	f, _ := os.Create(filename)
 	defer f.Close()

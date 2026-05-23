@@ -8,7 +8,7 @@ import (
 	"os/exec"
 )
 
-// SetDimensions sets the size of the console (alas it  does not work for Windows 11 console)
+// SetDimensions sets the size of the console
 func SetDimensions(cols int, lines int) {
 	columns := fmt.Sprintf("cols=%d", cols)
 	rows := fmt.Sprintf("lines=%d", lines)
