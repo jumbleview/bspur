@@ -344,8 +344,13 @@ func (m Model) viewPasswordEnter() string {
 	fActive := fStyle
 	if m.pwdCursor == 0 {
 		fActive = fStyle.Reverse(true)
+		cp := m.pwdTextCursor
+		if cp > len([]rune(m.pwdInputs[0])) {
+			cp = len([]rune(m.pwdInputs[0]))
+		}
+		fieldVal = strings.Repeat("*", cp) + "_" + strings.Repeat("*", len([]rune(m.pwdInputs[0]))-cp)
 	}
-	field := lStyle.Render("Password:") + " " + fActive.Render(fieldVal+"_")
+	field := lStyle.Render("Password:") + " " + fActive.Render(fieldVal)
 
 	submitStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Padding(0, 1)
 	cancelStyle := submitStyle
@@ -389,12 +394,18 @@ func (m Model) viewPasswordNew() string {
 
 	var fieldLines []string
 	for i, lbl := range labels {
-		val := strings.Repeat("*", len(inputs[i]))
+		r := []rune(inputs[i])
+		val := strings.Repeat("*", len(r))
 		fs := fStyle
 		if m.pwdCursor == i {
 			fs = fs.Reverse(true)
+			cp := m.pwdTextCursor
+			if cp > len(r) {
+				cp = len(r)
+			}
+			val = strings.Repeat("*", cp) + "_" + strings.Repeat("*", len(r)-cp)
 		}
-		fieldLines = append(fieldLines, " "+lStyle.Render(lbl)+" "+fs.Render(val+"_"))
+		fieldLines = append(fieldLines, " "+lStyle.Render(lbl)+" "+fs.Render(val))
 	}
 
 	submitStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Padding(0, 1)
@@ -422,21 +433,29 @@ func (m Model) viewEditForm() string {
 	fStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormInputBg).Width(28)
 	lStyle := lipgloss.NewStyle().Foreground(m.FormFg)
 
-	renderField := func(label, val string, cursor bool, hidden bool) string {
-		display := val
+	renderField := func(label, val string, active bool, hidden bool, textCursor int) string {
+		r := []rune(val)
+		display := string(r)
 		if hidden {
-			display = strings.Repeat("*", len(val))
+			display = strings.Repeat("*", len(r))
 		}
 		fs := fStyle
-		if cursor {
+		if active {
 			fs = fs.Reverse(true)
+			cp := textCursor
+			if cp > len(r) {
+				cp = len(r)
+			}
+			d := []rune(display)
+			d = append(d[:cp], append([]rune{'_'}, d[cp:]...)...)
+			display = string(d)
 		}
-		return " " + lStyle.Render(label) + " " + fs.Render(display+"_")
+		return " " + lStyle.Render(label) + " " + fs.Render(display)
 	}
 
 	var lines []string
 	lines = append(lines, "")
-	lines = append(lines, renderField("Record Name ", m.editKey, m.editCursor == 0, false))
+	lines = append(lines, renderField("Record Name ", m.editKey, m.editCursor == 0, false, m.editTextCursor))
 
 	isHidden := m.editVisibility == "h"
 	for i, val := range m.editValues {
@@ -444,7 +463,11 @@ func (m Model) viewEditForm() string {
 		if i == len(m.editValues)-1 {
 			label = "     +      "
 		}
-		lines = append(lines, renderField(label, val, m.editCursor == i+1, isHidden))
+		tc := 0
+		if m.editCursor == i+1 {
+			tc = m.editTextCursor
+		}
+		lines = append(lines, renderField(label, val, m.editCursor == i+1, isHidden, tc))
 	}
 
 	numFields := m.editNumFields()

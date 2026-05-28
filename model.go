@@ -127,15 +127,17 @@ type Model struct {
 
 	// ---- overlay sub-states ----
 	// password forms
-	pwdInputs [3]string // [0]=old [1]=new1 [2]=new2
-	pwdCursor int       // which input field is focused
-	pwdTitle  string
+	pwdInputs    [3]string // [0]=old [1]=new1 [2]=new2
+	pwdCursor    int       // which input field is focused
+	pwdTextCursor int      // rune offset within the active password field
+	pwdTitle     string
 
 	// edit form
 	editKey        string
 	editValues     []string
 	editVisibility string
 	editCursor     int // 0=name, 1..n=values, n+1=Submit, n+2=Hide/Reveal, n+3=Clear, n+4=Cancel
+	editTextCursor int // rune offset within the active input field
 
 	// mode picker
 	modeCursor int
@@ -156,6 +158,7 @@ type Model struct {
 	// ---- terminal size ----
 	termWidth  int
 	termHeight int
+
 
 	// ---- theme ----
 	SpurTheme

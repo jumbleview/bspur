@@ -46,6 +46,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgWrongPassword:
 		m.pwdInputs = [3]string{}
 		m.pwdCursor = 0
+		m.pwdTextCursor = 0
 		m.pwdTitle = msg.title
 		m.currentFocus = focusPasswordEnter
 		return m, nil
@@ -374,6 +375,7 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 	case "Password":
 		m.pwdInputs = [3]string{}
 		m.pwdCursor = 0
+		m.pwdTextCursor = 0
 		m.needOldPassword = true
 		m.pwdTitle = " Change page password "
 		m.currentFocus = focusPasswordNew
@@ -407,13 +409,45 @@ func (m Model) handlePwdEnterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyTab, tea.KeyDown:
 		m.pwdCursor = (m.pwdCursor + 1) % 3
+		m.pwdTextCursor = len([]rune(m.pwdInputs[0]))
 		return m, nil
 	case tea.KeyShiftTab, tea.KeyUp:
 		m.pwdCursor = (m.pwdCursor - 1 + 3) % 3
+		m.pwdTextCursor = len([]rune(m.pwdInputs[0]))
 		return m, nil
-	case tea.KeyBackspace, tea.KeyDelete:
-		if m.pwdCursor == 0 && len(m.pwdInputs[0]) > 0 {
-			m.pwdInputs[0] = m.pwdInputs[0][:len(m.pwdInputs[0])-1]
+	case tea.KeyLeft:
+		if m.pwdCursor == 0 {
+			if m.pwdTextCursor > 0 {
+				m.pwdTextCursor--
+			}
+		} else if m.pwdCursor > 1 {
+			m.pwdCursor--
+		}
+		return m, nil
+	case tea.KeyRight:
+		if m.pwdCursor == 0 {
+			if m.pwdTextCursor < len([]rune(m.pwdInputs[0])) {
+				m.pwdTextCursor++
+			}
+		} else if m.pwdCursor < 2 {
+			m.pwdCursor++
+		}
+		return m, nil
+	case tea.KeyBackspace:
+		if m.pwdCursor == 0 && m.pwdTextCursor > 0 {
+			r := []rune(m.pwdInputs[0])
+			r = append(r[:m.pwdTextCursor-1], r[m.pwdTextCursor:]...)
+			m.pwdInputs[0] = string(r)
+			m.pwdTextCursor--
+		}
+		return m, nil
+	case tea.KeyDelete:
+		if m.pwdCursor == 0 {
+			r := []rune(m.pwdInputs[0])
+			if m.pwdTextCursor < len(r) {
+				r = append(r[:m.pwdTextCursor], r[m.pwdTextCursor+1:]...)
+				m.pwdInputs[0] = string(r)
+			}
 		}
 		return m, nil
 	case tea.KeyEsc:
@@ -427,7 +461,10 @@ func (m Model) handlePwdEnterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.submitEnterPassword()
 	case tea.KeyRunes:
 		if m.pwdCursor == 0 {
-			m.pwdInputs[0] += string(msg.Runes)
+			r := []rune(m.pwdInputs[0])
+			r = append(r[:m.pwdTextCursor], append(msg.Runes, r[m.pwdTextCursor:]...)...)
+			m.pwdInputs[0] = string(r)
+			m.pwdTextCursor += len(msg.Runes)
 		} else if m.pwdCursor == 1 {
 			return m.submitEnterPassword()
 		} else {
@@ -460,18 +497,52 @@ func (m Model) handlePwdNewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		numFields = 3
 	}
 	totalItems := numFields + 2
+	inField := m.pwdCursor < numFields
 	switch msg.Type {
 	case tea.KeyTab, tea.KeyDown:
 		m.pwdCursor = (m.pwdCursor + 1) % totalItems
+		if m.pwdCursor < numFields {
+			m.pwdTextCursor = len([]rune(m.pwdInputs[m.pwdCursor]))
+		}
 		return m, nil
 	case tea.KeyShiftTab, tea.KeyUp:
 		m.pwdCursor = (m.pwdCursor - 1 + totalItems) % totalItems
-		return m, nil
-	case tea.KeyBackspace, tea.KeyDelete:
 		if m.pwdCursor < numFields {
-			f := &m.pwdInputs[m.pwdCursor]
-			if len(*f) > 0 {
-				*f = (*f)[:len(*f)-1]
+			m.pwdTextCursor = len([]rune(m.pwdInputs[m.pwdCursor]))
+		}
+		return m, nil
+	case tea.KeyLeft:
+		if inField {
+			if m.pwdTextCursor > 0 {
+				m.pwdTextCursor--
+			}
+		} else if m.pwdCursor > numFields {
+			m.pwdCursor--
+		}
+		return m, nil
+	case tea.KeyRight:
+		if inField {
+			if m.pwdTextCursor < len([]rune(m.pwdInputs[m.pwdCursor])) {
+				m.pwdTextCursor++
+			}
+		} else if m.pwdCursor < totalItems-1 {
+			m.pwdCursor++
+		}
+		return m, nil
+	case tea.KeyBackspace:
+		if inField && m.pwdTextCursor > 0 {
+			r := []rune(m.pwdInputs[m.pwdCursor])
+			r = append(r[:m.pwdTextCursor-1], r[m.pwdTextCursor:]...)
+			m.pwdInputs[m.pwdCursor] = string(r)
+			m.pwdTextCursor--
+		}
+		return m, nil
+	case tea.KeyDelete:
+		if inField {
+			r := []rune(m.pwdInputs[m.pwdCursor])
+			if m.pwdTextCursor < len(r) {
+				r = append(r[:m.pwdTextCursor], r[m.pwdTextCursor+1:]...)
+				m.pwdInputs[m.pwdCursor] = string(r)
 			}
 		}
 		return m, nil
@@ -485,8 +556,11 @@ func (m Model) handlePwdNewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.submitNewPassword()
 	case tea.KeyRunes:
-		if m.pwdCursor < numFields {
-			m.pwdInputs[m.pwdCursor] += string(msg.Runes)
+		if inField {
+			r := []rune(m.pwdInputs[m.pwdCursor])
+			r = append(r[:m.pwdTextCursor], append(msg.Runes, r[m.pwdTextCursor:]...)...)
+			m.pwdInputs[m.pwdCursor] = string(r)
+			m.pwdTextCursor += len(msg.Runes)
 		} else if m.pwdCursor == numFields {
 			return m.submitNewPassword()
 		} else {
@@ -514,6 +588,7 @@ func (m Model) submitNewPassword() (tea.Model, tea.Cmd) {
 		}
 		m.pwdInputs = [3]string{}
 		m.pwdCursor = 0
+		m.pwdTextCursor = 0
 		m.pwdTitle = title
 		return m, nil
 	}
@@ -521,6 +596,7 @@ func (m Model) submitNewPassword() (tea.Model, tea.Cmd) {
 	m.save()
 	m.pwdInputs = [3]string{}
 	m.pwdCursor = 0
+	m.pwdTextCursor = 0
 	m.currentFocus = focusMenu
 	return m, nil
 }
@@ -548,50 +624,112 @@ func (m *Model) openEditForm() {
 		m.editValues = append(m.editValues, "")
 	}
 	m.editCursor = 0
+	m.editTextCursor = len([]rune(m.editKey))
 	m.currentFocus = focusEdit
 }
 
 func (m *Model) editNumFields() int { return 1 + len(m.editValues) }
 func (m *Model) editTotalItems() int { return m.editNumFields() + 4 }
 
+func (m *Model) editActiveRunes() []rune {
+	if m.editCursor == 0 {
+		return []rune(m.editKey)
+	}
+	if m.editCursor < m.editNumFields() {
+		return []rune(m.editValues[m.editCursor-1])
+	}
+	return nil
+}
+
+func (m *Model) editSetActiveText(s string) {
+	r := []rune(s)
+	if m.editCursor == 0 {
+		m.editKey = s
+	} else if m.editCursor < m.editNumFields() {
+		m.editValues[m.editCursor-1] = s
+	}
+	if m.editTextCursor > len(r) {
+		m.editTextCursor = len(r)
+	}
+}
+
+func (m *Model) editMoveCursorToEnd() {
+	m.editTextCursor = len(m.editActiveRunes())
+}
+
 func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	numFields := m.editNumFields()
 	total := m.editTotalItems()
+	inField := m.editCursor < numFields
 
 	switch msg.Type {
 	case tea.KeyTab, tea.KeyDown:
 		m.editCursor = (m.editCursor + 1) % total
+		m.editMoveCursorToEnd()
 		return m, nil
 	case tea.KeyShiftTab, tea.KeyUp:
 		m.editCursor = (m.editCursor - 1 + total) % total
+		m.editMoveCursorToEnd()
 		return m, nil
-	case tea.KeyBackspace, tea.KeyDelete:
-		if m.editCursor == 0 {
-			if len(m.editKey) > 0 {
-				m.editKey = m.editKey[:len(m.editKey)-1]
+
+	case tea.KeyLeft:
+		if inField {
+			if m.editTextCursor > 0 {
+				m.editTextCursor--
 			}
-		} else if m.editCursor < numFields {
-			idx := m.editCursor - 1
-			if len(m.editValues[idx]) > 0 {
-				m.editValues[idx] = m.editValues[idx][:len(m.editValues[idx])-1]
+		} else {
+			if m.editCursor > numFields {
+				m.editCursor--
 			}
 		}
 		return m, nil
+	case tea.KeyRight:
+		if inField {
+			if m.editTextCursor < len(m.editActiveRunes()) {
+				m.editTextCursor++
+			}
+		} else {
+			if m.editCursor < total-1 {
+				m.editCursor++
+			}
+		}
+		return m, nil
+
+	case tea.KeyBackspace:
+		if inField && m.editTextCursor > 0 {
+			r := m.editActiveRunes()
+			r = append(r[:m.editTextCursor-1], r[m.editTextCursor:]...)
+			m.editTextCursor--
+			m.editSetActiveText(string(r))
+		}
+		return m, nil
+	case tea.KeyDelete:
+		if inField {
+			r := m.editActiveRunes()
+			if m.editTextCursor < len(r) {
+				r = append(r[:m.editTextCursor], r[m.editTextCursor+1:]...)
+				m.editSetActiveText(string(r))
+			}
+		}
+		return m, nil
+
 	case tea.KeyEsc:
 		m.currentFocus = focusMenu
 		return m, nil
 	case tea.KeyEnter:
 		return m.handleEditButton()
 	case tea.KeyRunes:
-		if m.editCursor == 0 {
-			m.editKey += string(msg.Runes)
-			if m.editVisibility == "" {
+		if inField {
+			r := m.editActiveRunes()
+			r = append(r[:m.editTextCursor], append(msg.Runes, r[m.editTextCursor:]...)...)
+			m.editTextCursor += len(msg.Runes)
+			m.editSetActiveText(string(r))
+			if m.editCursor == 0 && m.editVisibility == "" {
 				m.editVisibility = "v"
 			}
-		} else if m.editCursor < numFields {
-			idx := m.editCursor - 1
-			m.editValues[idx] += string(msg.Runes)
-			clipboard.WriteAll(m.editValues[idx])
+			if m.editCursor > 0 {
+				clipboard.WriteAll(m.editValues[m.editCursor-1])
+			}
 		} else {
 			return m.handleEditButton()
 		}
