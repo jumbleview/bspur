@@ -238,8 +238,8 @@ func (m Model) viewTable() string {
 		if m.currentFocus == focusTable && dataRow == m.activeRow {
 			selCol = m.activeColumn
 		}
-
-		lines = append(lines, renderRow(cells, colWidths, cellFg, cellBg, selCol))
+		tableRow := renderRow(cells, colWidths, cellFg, cellBg, selCol)
+		lines = append(lines, tableRow)
 	}
 
 	// Pad remaining rows so the table height stays constant
@@ -285,6 +285,15 @@ func centerPad(s string, width int) string {
 func (m Model) viewOverlay(box string) string {
 	bg := m.viewMain()
 	lines := strings.Split(bg, "\n")
+
+	tableWidth := 0
+	for _, row := range lines {
+		rowLength := lipgloss.Width(row)
+		if rowLength > tableWidth {
+			tableWidth = rowLength
+		}
+	}
+
 	boxLines := strings.Split(box, "\n")
 
 	boxH := len(boxLines)
@@ -295,9 +304,8 @@ func (m Model) viewOverlay(box string) string {
 		}
 	}
 
-	tableRowLen := lipgloss.Width(lines[2]) // to do check that lines is bigger than 2
 	startY := (m.termHeight - boxH) / 2
-	startX := (tableRowLen - boxW) / 2
+	startX := (tableWidth - boxW) / 2
 	if startY < 0 {
 		startY = 0
 	}
