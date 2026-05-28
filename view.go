@@ -436,13 +436,13 @@ func (m Model) viewEditForm() string {
 
 	var lines []string
 	lines = append(lines, "")
-	lines = append(lines, renderField("Record Name", m.editKey, m.editCursor == 0, false))
+	lines = append(lines, renderField("Record Name ", m.editKey, m.editCursor == 0, false))
 
 	isHidden := m.editVisibility == "h"
 	for i, val := range m.editValues {
-		label := fmt.Sprintf("Field %d ", i+1)
+		label := fmt.Sprintf("Field   %d   ", i+1)
 		if i == len(m.editValues)-1 {
-			label = "+ "
+			label = "     +      "
 		}
 		lines = append(lines, renderField(label, val, m.editCursor == i+1, isHidden))
 	}
