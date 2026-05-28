@@ -1,0 +1,13 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+    "label": "Debug Go App",
+    "adapter": "delve",
+    "request": "launch",
+    "program": "C:/prj/bspur/bspur.exe",
+    "args": "./demo/cribsheet",
+  },
+]

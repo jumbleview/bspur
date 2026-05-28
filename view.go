@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // -----------------------------------------------------------------------
@@ -55,7 +56,7 @@ func (m Model) viewTopMenu() string {
 		if m.currentFocus == focusMenu && i == m.menuIndex {
 			s = s.Reverse(true)
 		}
-		parts = append(parts, s.Render("[ "+label+" ]"))
+		parts = append(parts, s.Render(label))
 	}
 	bar := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 	return lipgloss.NewStyle().
@@ -294,8 +295,9 @@ func (m Model) viewOverlay(box string) string {
 		}
 	}
 
+	tableRowLen := lipgloss.Width(lines[2]) // to do check that lines is bigger than 2
 	startY := (m.termHeight - boxH) / 2
-	startX := (m.termWidth - boxW) / 2
+	startX := (tableRowLen - boxW) / 2
 	if startY < 0 {
 		startY = 0
 	}
@@ -312,28 +314,11 @@ func (m Model) viewOverlay(box string) string {
 		for lipgloss.Width(line) < startX {
 			line += " "
 		}
-		before := truncateToWidth(line, startX)
-		lines[y] = before + bl
+		before := ansi.Truncate(line, startX, "")
+		after := ansi.TruncateLeft(line, startX+lipgloss.Width(bl), "")
+		lines[y] = before + bl + after
 	}
-
 	return strings.Join(lines, "\n")
-}
-
-func truncateToWidth(s string, width int) string {
-	result := ""
-	w := 0
-	for _, r := range []rune(s) {
-		if w >= width {
-			break
-		}
-		result += string(r)
-		w++
-	}
-	for w < width {
-		result += " "
-		w++
-	}
-	return result
 }
 
 // -----------------------------------------------------------------------
@@ -489,11 +474,13 @@ func (m Model) viewModePicker() string {
 		if i == m.modeCursor {
 			s = s.Reverse(true)
 		}
-		lines = append(lines, " "+s.Render(mode))
+		sm := s.Render(mode)
+		lines = append(lines, " "+sm)
 	}
 	lines = append(lines, "")
 	content := lipgloss.JoinVertical(lipgloss.Right, lines...)
-	return m.boxStyle(len(ModeClipSelect)+6, " Mode: ").Render(content)
+	rc := m.boxStyle(len(ModeClipSelect)+6, " Mode: ").Render(content)
+	return rc
 }
 
 // -----------------------------------------------------------------------

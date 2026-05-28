@@ -69,7 +69,7 @@ func (v *ModeValue) Set(s string) error {
 // -----------------------------------------------------------------------
 
 func main() {
-	greeting := "tspur [-cm] [-cf] [-ct] [-md] [-ta] path_to_data_file"
+	greeting := "bspur [-cm] [-cf] [-ct] [-md] [-ta] path_to_data_file"
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, greeting)
 	}

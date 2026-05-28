@@ -1,6 +1,6 @@
 # tspur
 ![TSPUR](./images/tspur.png)
-TSPUR is terminal application  with some user records presented as a table. I personally use it as cheat sheet (to keep my various usernames and passwords  together with some useful facts and reminders).
+BSPUR is migration  of TSPUR project from 'tview' package to bubbletea. It is terminal application  with some user records presented as a table. I personally use it as cheat sheet (to keep my various usernames and passwords  together with some useful facts and reminders).
 
 ## General Description
 Terminal screen consists of two areas:
