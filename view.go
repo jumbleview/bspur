@@ -79,9 +79,7 @@ func (m Model) computeColWidths() []int {
 
 	// Seed from header labels
 	colWidths[0] = len(fmt.Sprintf("%d Rows", len(m.records)))
-	if colWidths[0] < 5 {
-		colWidths[0] = 5
-	}
+	colWidths[0] = max(colWidths[0], 5)
 	colWidths[1] = len("Record Name")
 	for c := 2; c < totalCols; c++ {
 		colWidths[c] = len(fmt.Sprintf(FmtFieldTitle, c-1))
@@ -89,9 +87,7 @@ func (m Model) computeColWidths() []int {
 
 	// Expand to fit actual content (add 2 chars of side padding)
 	for _, key := range m.keys {
-		if w := len(key) + 2; w > colWidths[1] {
-			colWidths[1] = w
-		}
+		colWidths[1] = max(colWidths[1], len(key)+2)
 		values := m.records[key]
 		for c := 2; c < totalCols; c++ {
 			idx := c - 2
@@ -102,9 +98,7 @@ func (m Model) computeColWidths() []int {
 				} else {
 					w = len(values[idx]) + 2
 				}
-				if w > colWidths[c] {
-					colWidths[c] = w
-				}
+				colWidths[c] = max(colWidths[c], w)
 			}
 		}
 	}
@@ -112,13 +106,9 @@ func (m Model) computeColWidths() []int {
 	// Cap to prevent runaway widths
 	const maxNameWidth = 28
 	const maxValWidth = 36
-	if colWidths[1] > maxNameWidth {
-		colWidths[1] = maxNameWidth
-	}
+	colWidths[1] = min(colWidths[1], maxNameWidth)
 	for c := 2; c < totalCols; c++ {
-		if colWidths[c] > maxValWidth {
-			colWidths[c] = maxValWidth
-		}
+		colWidths[c] = min(colWidths[c], maxValWidth)
 	}
 
 	return colWidths
@@ -196,10 +186,7 @@ func (m Model) viewTable() string {
 	lines = append(lines, sepLine)
 
 	vis := m.visibleRows()
-	end := m.tableOffset + vis
-	if end > len(m.keys) {
-		end = len(m.keys)
-	}
+	end := min(m.tableOffset+vis, len(m.keys))
 
 	for r := m.tableOffset; r < end; r++ {
 		dataRow := r + 1 // 1-based
@@ -288,10 +275,7 @@ func (m Model) viewOverlay(box string) string {
 
 	tableWidth := 0
 	for _, row := range lines {
-		rowLength := lipgloss.Width(row)
-		if rowLength > tableWidth {
-			tableWidth = rowLength
-		}
+		tableWidth = max(tableWidth, lipgloss.Width(row))
 	}
 
 	boxLines := strings.Split(box, "\n")
@@ -299,19 +283,11 @@ func (m Model) viewOverlay(box string) string {
 	boxH := len(boxLines)
 	boxW := 0
 	for _, l := range boxLines {
-		if lipgloss.Width(l) > boxW {
-			boxW = lipgloss.Width(l)
-		}
+		boxW = max(boxW, lipgloss.Width(l))
 	}
 
-	startY := (m.termHeight - boxH) / 2
-	startX := (tableWidth - boxW) / 2
-	if startY < 0 {
-		startY = 0
-	}
-	if startX < 0 {
-		startX = 0
-	}
+	startY := max((m.termHeight-boxH)/2, 0)
+	startX := max((tableWidth-boxW)/2, 0)
 
 	for i, bl := range boxLines {
 		y := startY + i
@@ -344,13 +320,14 @@ func (m Model) viewPasswordEnter() string {
 	fActive := fStyle
 	if m.pwdCursor == 0 {
 		fActive = fStyle.Reverse(true)
-		cp := m.pwdTextCursor
-		if cp > len([]rune(m.pwdInputs[0])) {
-			cp = len([]rune(m.pwdInputs[0]))
-		}
+		cp := min(m.pwdTextCursor, len([]rune(m.pwdInputs[0])))
 		fieldVal = strings.Repeat("*", cp) + "_" + strings.Repeat("*", len([]rune(m.pwdInputs[0]))-cp)
 	}
-	field := lStyle.Render("Password:") + " " + fActive.Render(fieldVal)
+	gap := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
+	field := lStyle.Render("Password:") + gap + fActive.Render(fieldVal)
+
+	const pwdEnterWidth = 40
+	lineStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Width(pwdEnterWidth)
 
 	submitStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Padding(0, 1)
 	cancelStyle := submitStyle
@@ -360,17 +337,18 @@ func (m Model) viewPasswordEnter() string {
 	if m.pwdCursor == 2 {
 		cancelStyle = cancelStyle.Reverse(true)
 	}
+	sep := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
 	btns := lipgloss.JoinHorizontal(lipgloss.Top,
-		submitStyle.Render("[ Submit ]"), " ", cancelStyle.Render("[ Cancel ]"))
+		submitStyle.Render("[ Submit ]"), sep, cancelStyle.Render("[ Cancel ]"))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		"",
-		" "+field,
-		"",
-		" "+btns,
-		"",
+		lineStyle.Render(""),
+		lineStyle.Render(" "+field),
+		lineStyle.Render(""),
+		lineStyle.Render(" "+btns),
+		lineStyle.Render(""),
 	)
-	return m.boxStyle(40, title).Render(content)
+	return m.boxStyle(pwdEnterWidth, title).Render(content)
 }
 
 // -----------------------------------------------------------------------
@@ -399,14 +377,15 @@ func (m Model) viewPasswordNew() string {
 		fs := fStyle
 		if m.pwdCursor == i {
 			fs = fs.Reverse(true)
-			cp := m.pwdTextCursor
-			if cp > len(r) {
-				cp = len(r)
-			}
+			cp := min(m.pwdTextCursor, len(r))
 			val = strings.Repeat("*", cp) + "_" + strings.Repeat("*", len(r)-cp)
 		}
-		fieldLines = append(fieldLines, " "+lStyle.Render(lbl)+" "+fs.Render(val))
+		gap := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
+		fieldLines = append(fieldLines, " "+lStyle.Render(lbl)+gap+fs.Render(val))
 	}
+
+	const pwdNewWidth = 44
+	lineStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Width(pwdNewWidth)
 
 	submitStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Padding(0, 1)
 	cancelStyle := submitStyle
@@ -416,13 +395,18 @@ func (m Model) viewPasswordNew() string {
 	if m.pwdCursor == numFields+1 {
 		cancelStyle = cancelStyle.Reverse(true)
 	}
+	sep := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
 	btns := lipgloss.JoinHorizontal(lipgloss.Top,
-		submitStyle.Render("[ Submit ]"), " ", cancelStyle.Render("[ Cancel ]"))
+		submitStyle.Render("[ Submit ]"), sep, cancelStyle.Render("[ Cancel ]"))
 
-	lines := append([]string{""}, fieldLines...)
-	lines = append(lines, "", " "+btns, "")
+	var lines []string
+	lines = append(lines, lineStyle.Render(""))
+	for _, fl := range fieldLines {
+		lines = append(lines, lineStyle.Render(fl))
+	}
+	lines = append(lines, lineStyle.Render(""), lineStyle.Render(" "+btns), lineStyle.Render(""))
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
-	return m.boxStyle(44, m.pwdTitle).Render(content)
+	return m.boxStyle(pwdNewWidth, m.pwdTitle).Render(content)
 }
 
 // -----------------------------------------------------------------------
@@ -442,10 +426,7 @@ func (m Model) viewEditForm() string {
 		fs := fStyle
 		if active {
 			fs = fs.Reverse(true)
-			cp := textCursor
-			if cp > len(r) {
-				cp = len(r)
-			}
+			cp := min(textCursor, len(r))
 			d := []rune(display)
 			d = append(d[:cp], append([]rune{'_'}, d[cp:]...)...)
 			display = string(d)
@@ -519,35 +500,45 @@ func (m Model) viewModePicker() string {
 // -----------------------------------------------------------------------
 
 func (m Model) viewConfirm() string {
-	msgStyle := lipgloss.NewStyle().Foreground(m.FormFg)
+	msgLines := strings.Split(m.confirmText, "\n")
+	w := 28
+	for _, l := range msgLines {
+		if len(l)+4 > w {
+			w = len(l) + 4
+		}
+	}
+
+	// Each text line fills the full box width so no dark gap appears on the right.
+	lineStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Width(w)
 	btnStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Padding(0, 1)
 
-	okBtn := btnStyle.Render("[ " + m.confirmOK + " ]")
+	okStyle := btnStyle
+	cancelStyle := btnStyle
+	if m.confirmCursor == 0 {
+		okStyle = okStyle.Reverse(true)
+	} else {
+		cancelStyle = cancelStyle.Reverse(true)
+	}
+	okBtn := okStyle.Render("[ " + m.confirmOK + " ]")
 	var btns string
 	if m.confirmCancel != "" {
-		cancelBtn := btnStyle.Render("[ " + m.confirmCancel + " ]")
-		btns = lipgloss.JoinHorizontal(lipgloss.Top, okBtn, " ", cancelBtn)
+		cancelBtn := cancelStyle.Render("[ " + m.confirmCancel + " ]")
+		sep := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
+		btns = lipgloss.JoinHorizontal(lipgloss.Top, okBtn, sep, cancelBtn)
 	} else {
 		btns = okBtn
 	}
 
-	msgLines := strings.Split(m.confirmText, "\n")
 	var lines []string
-	lines = append(lines, "")
+	lines = append(lines, lineStyle.Render(""))
 	for _, ml := range msgLines {
-		lines = append(lines, " "+msgStyle.Render(ml))
+		lines = append(lines, lineStyle.Render("  "+ml))
 	}
-	lines = append(lines, "")
-	lines = append(lines, " "+btns)
-	lines = append(lines, "")
+	lines = append(lines, lineStyle.Render(""))
+	lines = append(lines, lineStyle.Render("  "+btns))
+	lines = append(lines, lineStyle.Render(""))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
-	w := 36
-	for _, l := range msgLines {
-		if len(l)+6 > w {
-			w = len(l) + 6
-		}
-	}
 	return m.boxStyle(w, "").Render(content)
 }
 
@@ -556,7 +547,7 @@ func (m Model) viewConfirm() string {
 // -----------------------------------------------------------------------
 
 func (m Model) viewGitResult() string {
-	msgStyle := lipgloss.NewStyle().Foreground(m.FormFg)
+	msgStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg)
 	btnStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormBg).Padding(0, 1)
 
 	content := lipgloss.JoinVertical(lipgloss.Left,

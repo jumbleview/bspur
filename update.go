@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"strings"
 	"unicode"
 
@@ -276,36 +277,40 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 		m.currentFocus = focusMode
 
 	case "WWW":
-		var key, url string
+		var key, rawURL string
 		if m.activeRow > 0 && len(m.keys) > 0 {
 			key = m.keys[m.activeRow-1]
 		}
 		urlIdx := m.activeColumn - 2
 		if key != "" && urlIdx >= 0 && urlIdx < len(m.records[key]) {
-			url = m.records[key][urlIdx]
+			rawURL = m.records[key][urlIdx]
 		}
-		if len(url) > 0 {
-			m.confirmText = "Go to URL:\n[" + url + "] ?"
+		openURL := rawURL
+		if !strings.HasPrefix(openURL, "http://") && !strings.HasPrefix(openURL, "https://") {
+			openURL = "https://" + openURL
+		}
+		parsed, parseErr := url.Parse(openURL)
+		valid := parseErr == nil && parsed.Host != "" && strings.Contains(parsed.Host, ".")
+		if valid {
+			m.confirmText = "Go to URL:\n" + rawURL
 			m.confirmOK = "Yes"
 			m.confirmCancel = "No"
-			capturedURL := url
+			capturedURL := openURL
 			m.confirmYesFn = func() tea.Cmd {
-				if !strings.HasPrefix(capturedURL, "http://") && !strings.HasPrefix(capturedURL, "https://") {
-					capturedURL = "http://" + capturedURL
-				}
 				browser.OpenURL(capturedURL)
 				return nil
 			}
 			m.confirmNoFn = func() tea.Cmd { return nil }
-			m.currentFocus = focusConfirmWWW
 		} else {
-			m.confirmText = "Not valid URL\n[" + url + "]"
+			m.confirmText = "Not a valid URL:\n" + rawURL
 			m.confirmOK = "OK"
 			m.confirmCancel = ""
 			m.confirmYesFn = func() tea.Cmd { return nil }
 			m.confirmNoFn = nil
-			m.currentFocus = focusConfirmWWW
 		}
+		m.confirmCursor = 0
+		m.confirmReturnFocus = focusTable
+		m.currentFocus = focusConfirmWWW
 
 	case "Edit":
 		m.openEditForm()
@@ -327,17 +332,19 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 				m.activeColumn = 1
 				m.adjustOffset()
 				m.dirty = true
-				m.currentFocus = focusTable
 				return nil
 			}
 			m.confirmNoFn = func() tea.Cmd { return nil }
+			m.confirmReturnFocus = focusTable
 		} else {
 			m.confirmText = "Nothing to delete. Record empty"
 			m.confirmOK = "OK"
 			m.confirmCancel = ""
 			m.confirmYesFn = func() tea.Cmd { return nil }
 			m.confirmNoFn = nil
+			m.confirmReturnFocus = focusMenu
 		}
+		m.confirmCursor = 0
 		m.currentFocus = focusConfirmDelete
 
 	case "Save":
@@ -346,13 +353,11 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 		m.confirmCancel = "Cancel"
 		m.confirmYesFn = func() tea.Cmd {
 			m.save()
-			m.currentFocus = focusMenu
 			return nil
 		}
-		m.confirmNoFn = func() tea.Cmd {
-			m.currentFocus = focusMenu
-			return nil
-		}
+		m.confirmNoFn = func() tea.Cmd { return nil }
+		m.confirmCursor = 0
+		m.confirmReturnFocus = focusMenu
 		m.currentFocus = focusConfirmSave
 
 	case "Git":
@@ -366,10 +371,9 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 				return msgGitResult{text: txt, err: err}
 			}
 		}
-		m.confirmNoFn = func() tea.Cmd {
-			m.currentFocus = focusMenu
-			return nil
-		}
+		m.confirmNoFn = func() tea.Cmd { return nil }
+		m.confirmCursor = 0
+		m.confirmReturnFocus = focusMenu
 		m.currentFocus = focusConfirmGit
 
 	case "Password":
@@ -392,10 +396,9 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 			clipboard.WriteAll("")
 			return tea.Quit
 		}
-		m.confirmNoFn = func() tea.Cmd {
-			m.currentFocus = focusMenu
-			return nil
-		}
+		m.confirmNoFn = func() tea.Cmd { return nil }
+		m.confirmCursor = 0
+		m.confirmReturnFocus = focusMenu
 		m.currentFocus = focusConfirmExit
 	}
 	return m, nil
@@ -616,10 +619,7 @@ func (m *Model) openEditForm() {
 		m.editVisibility = m.visibility[m.editKey]
 		m.editValues = append([]string{}, m.records[m.editKey]...)
 	}
-	count := m.width
-	if count < 2 {
-		count = 2
-	}
+	count := max(m.width, 2)
 	for len(m.editValues) <= count {
 		m.editValues = append(m.editValues, "")
 	}
@@ -648,9 +648,7 @@ func (m *Model) editSetActiveText(s string) {
 	} else if m.editCursor < m.editNumFields() {
 		m.editValues[m.editCursor-1] = s
 	}
-	if m.editTextCursor > len(r) {
-		m.editTextCursor = len(r)
-	}
+	m.editTextCursor = min(m.editTextCursor, len(r))
 }
 
 func (m *Model) editMoveCursorToEnd() {
@@ -806,44 +804,50 @@ func (m Model) handleModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // -----------------------------------------------------------------------
 
 func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEnter, tea.KeyLeft, tea.KeyRight, tea.KeyTab:
-		if msg.Type == tea.KeyEnter || msg.Type == tea.KeyLeft || msg.Type == tea.KeyTab {
+	hasCancel := m.confirmCancel != ""
+
+	doActivate := func() (tea.Model, tea.Cmd) {
+		var cmd tea.Cmd
+		if m.confirmCursor == 0 {
 			if m.confirmYesFn != nil {
-				cmd := m.confirmYesFn()
-				m.currentFocus = focusMenu
-				return m, cmd
+				cmd = m.confirmYesFn()
 			}
 		} else {
 			if m.confirmNoFn != nil {
-				cmd := m.confirmNoFn()
-				m.currentFocus = focusMenu
-				return m, cmd
+				cmd = m.confirmNoFn()
 			}
 		}
-	case tea.KeyEsc:
-		if m.confirmNoFn != nil {
-			cmd := m.confirmNoFn()
-			m.currentFocus = focusMenu
-			return m, cmd
+		m.currentFocus = m.confirmReturnFocus
+		return m, cmd
+	}
+
+	switch msg.Type {
+	case tea.KeyLeft, tea.KeyShiftTab:
+		if hasCancel {
+			m.confirmCursor = 0
 		}
-		m.currentFocus = focusMenu
+		return m, nil
+	case tea.KeyRight, tea.KeyTab:
+		if hasCancel {
+			m.confirmCursor = 1
+		}
+		return m, nil
+	case tea.KeyEnter, tea.KeySpace:
+		return doActivate()
+	case tea.KeyEsc:
+		m.confirmCursor = 1
+		return doActivate()
 	case tea.KeyRunes:
 		r := msg.Runes[0]
 		switch strings.ToLower(string(r)) {
-		case "y", "o", " ":
-			if m.confirmYesFn != nil {
-				cmd := m.confirmYesFn()
-				m.currentFocus = focusMenu
-				return m, cmd
-			}
+		case "y", "o":
+			m.confirmCursor = 0
+			return doActivate()
 		case "n", "c":
-			if m.confirmNoFn != nil {
-				cmd := m.confirmNoFn()
-				m.currentFocus = focusMenu
-				return m, cmd
+			if hasCancel {
+				m.confirmCursor = 1
+				return doActivate()
 			}
-			m.currentFocus = focusMenu
 		}
 	}
 	return m, nil

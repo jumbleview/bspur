@@ -143,11 +143,13 @@ type Model struct {
 	modeCursor int
 
 	// confirm overlays
-	confirmText   string
-	confirmOK     string
-	confirmCancel string
-	confirmYesFn  func() tea.Cmd
-	confirmNoFn   func() tea.Cmd
+	confirmText        string
+	confirmOK          string
+	confirmCancel      string
+	confirmYesFn       func() tea.Cmd
+	confirmNoFn        func() tea.Cmd
+	confirmCursor      int   // 0=OK/Yes, 1=Cancel/No
+	confirmReturnFocus focus // where to go after confirm is dismissed
 
 	// git result
 	gitResultText string
@@ -254,16 +256,18 @@ func (m *Model) updateRecord(key string, values []string, vis string) int {
 }
 
 func (m *Model) save() {
-	csv := ""
+	var sb strings.Builder
 	for _, key := range m.keys {
-		line := m.visibility[key] + "," + key
+		sb.WriteString(m.visibility[key])
+		sb.WriteByte(',')
+		sb.WriteString(key)
 		for _, v := range m.records[key] {
-			line += "," + v
+			sb.WriteByte(',')
+			sb.WriteString(v)
 		}
-		line += "\n"
-		csv += line
+		sb.WriteByte('\n')
 	}
-	if err := EncryptFile(m.cribName, []byte(csv), m.passwd); err != nil {
+	if err := EncryptFile(m.cribName, []byte(sb.String()), m.passwd); err != nil {
 		panic(err.Error())
 	}
 	m.dirty = false
@@ -312,13 +316,9 @@ func (m *Model) copyActiveToClipboard() {
 	clipboard.WriteAll(text)
 }
 
-// numDataCols returns the number of value columns to display (at least 2).
+// numDataCols returns the number of value columns to display (at least 4).
 func (m *Model) numDataCols() int {
-	w := m.width
-	if w < 2 {
-		w = 2
-	}
-	return w
+	return max(m.width, 4)
 }
 
 // saveMenuLabel returns "Save!" when dirty, "Save" otherwise.
@@ -354,33 +354,21 @@ func (m *Model) clampRow() {
 		m.activeRow = 1
 		return
 	}
-	if m.activeRow < 1 {
-		m.activeRow = 1
-	}
-	if m.activeRow > len(m.keys) {
-		m.activeRow = len(m.keys)
-	}
+	m.activeRow = max(m.activeRow, 1)
+	m.activeRow = min(m.activeRow, len(m.keys))
 }
 
 // clampCol keeps activeColumn in [1, 1+numDataCols].
 func (m *Model) clampCol() {
-	max := 1 + m.numDataCols()
-	if m.activeColumn < 1 {
-		m.activeColumn = 1
-	}
-	if m.activeColumn > max {
-		m.activeColumn = max
-	}
+	maxCol := 1 + m.numDataCols()
+	m.activeColumn = max(m.activeColumn, 1)
+	m.activeColumn = min(m.activeColumn, maxCol)
 }
 
 // visibleRows returns how many data rows fit given terminal height.
 func (m *Model) visibleRows() int {
 	// header=1, menu=1, border lines ~3
-	rows := m.termHeight - 5
-	if rows < 1 {
-		rows = 1
-	}
-	return rows
+	return max(m.termHeight-5, 1)
 }
 
 // adjustOffset keeps tableOffset so activeRow is visible.

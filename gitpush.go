@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // CheckGit returns nil if directory contains a valid git working tree, error otherwise
@@ -46,14 +47,16 @@ func PushRemote(directory string, fileToCommit string, comments []string) (strin
 	if err != nil {
 		return "Status staging error:", err
 	}
-	comment := "-m\""
+	var sb strings.Builder
+	sb.WriteString("-m\"")
 	for i, c := range comments {
-		comment += c
+		sb.WriteString(c)
 		if i < len(comments)-1 {
-			comment += ","
+			sb.WriteByte(',')
 		}
 	}
-	comment += "\""
+	sb.WriteByte('"')
+	comment := sb.String()
 	_, err = exec.Command("git", "commit", comment).Output()
 	if err != nil {
 		return "Commit error:", err
