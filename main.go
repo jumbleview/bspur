@@ -18,6 +18,8 @@ import (
 // Flag helpers (same interface as original)
 // -----------------------------------------------------------------------
 
+var InfoPlace string
+
 type ColorValues struct {
 	Colors     []lipgloss.Color
 	ColorsList string

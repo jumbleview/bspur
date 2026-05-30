@@ -98,9 +98,19 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Click on the menu bar → switch focus to menu
+	// Click on the menu bar → move focus + highlight the clicked button
 	if msg.Y == 0 {
 		m.currentFocus = focusMenu
+		btns := m.menuButtons()
+		x := 0
+		for i, label := range btns {
+			btnWidth := len(label) + 2 // 1-space padding each side
+			if msg.X >= x && msg.X < x+btnWidth {
+				m.menuIndex = i
+				break
+			}
+			x += btnWidth
+		}
 		return m, nil
 	}
 
@@ -262,7 +272,6 @@ func (m Model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 	base := strings.TrimSuffix(label, "!")
-
 	switch base {
 	case "Select":
 		if len(m.keys) > 0 {
@@ -628,7 +637,7 @@ func (m *Model) openEditForm() {
 	m.currentFocus = focusEdit
 }
 
-func (m *Model) editNumFields() int { return 1 + len(m.editValues) }
+func (m *Model) editNumFields() int  { return 1 + len(m.editValues) }
 func (m *Model) editTotalItems() int { return m.editNumFields() + 4 }
 
 func (m *Model) editActiveRunes() []rune {
@@ -811,6 +820,9 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.confirmCursor == 0 {
 			if m.confirmYesFn != nil {
 				cmd = m.confirmYesFn()
+			}
+			if m.currentFocus == focusConfirmSave {
+				m.dirty = false
 			}
 		} else {
 			if m.confirmNoFn != nil {

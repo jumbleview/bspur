@@ -22,7 +22,9 @@ func (m Model) View() string {
 		return m.viewOverlay(m.viewEditForm())
 	case focusMode:
 		return m.viewOverlay(m.viewModePicker())
-	case focusConfirmWWW, focusConfirmDelete, focusConfirmSave, focusConfirmExit, focusConfirmGit:
+	case focusConfirmWWW, focusConfirmDelete, focusConfirmExit, focusConfirmGit:
+		return m.viewOverlay(m.viewConfirm())
+	case focusConfirmSave:
 		return m.viewOverlay(m.viewConfirm())
 	case focusGitResult:
 		return m.viewOverlay(m.viewGitResult())
@@ -38,7 +40,8 @@ func (m Model) View() string {
 func (m Model) viewMain() string {
 	menu := m.viewTopMenu()
 	table := m.viewTable()
-	return lipgloss.JoinVertical(lipgloss.Left, menu, table)
+	bottomLine := m.viewInfoPlace()
+	return lipgloss.JoinVertical(lipgloss.Left, menu, table, bottomLine)
 }
 
 // -----------------------------------------------------------------------
@@ -63,6 +66,14 @@ func (m Model) viewTopMenu() string {
 		Background(m.MainBg).
 		Width(m.termWidth).
 		Render(bar)
+}
+
+// Information stored in model to be printed on the botom line
+func (m Model) viewInfoPlace() string {
+	return lipgloss.NewStyle().
+		Background(m.MainBg).
+		Width(m.termWidth).
+		Render(InfoPlace)
 }
 
 // -----------------------------------------------------------------------

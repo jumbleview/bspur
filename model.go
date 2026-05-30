@@ -127,10 +127,10 @@ type Model struct {
 
 	// ---- overlay sub-states ----
 	// password forms
-	pwdInputs    [3]string // [0]=old [1]=new1 [2]=new2
-	pwdCursor    int       // which input field is focused
-	pwdTextCursor int      // rune offset within the active password field
-	pwdTitle     string
+	pwdInputs     [3]string // [0]=old [1]=new1 [2]=new2
+	pwdCursor     int       // which input field is focused
+	pwdTextCursor int       // rune offset within the active password field
+	pwdTitle      string
 
 	// edit form
 	editKey        string
@@ -160,7 +160,6 @@ type Model struct {
 	// ---- terminal size ----
 	termWidth  int
 	termHeight int
-
 
 	// ---- theme ----
 	SpurTheme
@@ -368,7 +367,8 @@ func (m *Model) clampCol() {
 // visibleRows returns how many data rows fit given terminal height.
 func (m *Model) visibleRows() int {
 	// header=1, menu=1, border lines ~3
-	return max(m.termHeight-5, 1)
+	// return max(m.termHeight-5, 1)
+	return max(m.termHeight-6, 1)
 }
 
 // adjustOffset keeps tableOffset so activeRow is visible.
