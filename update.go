@@ -139,7 +139,7 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	xPos := msg.X - 1 // strip the leading │
 	if xPos >= 0 {
 		cumWidth := 0
-		for c := 0; c < totalCols; c++ {
+		for c := range totalCols {
 			if xPos >= cumWidth && xPos < cumWidth+colWidths[c] {
 				if c >= 1 { // col 0 is the row-number gutter — not selectable
 					m.activeColumn = c
