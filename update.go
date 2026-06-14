@@ -94,9 +94,32 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 //	Y=3        table separator  (├─…─┤)
 //	Y=4+       table data rows
 func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	if msg.Button != tea.MouseButtonLeft || msg.Action != tea.MouseActionPress {
+	// Handle scrollbar drag
+	if m.scrollbarDragging {
+		if msg.Action == tea.MouseActionMotion {
+			return m.updateScrollbarDrag(msg.Y)
+		} else if msg.Action == tea.MouseActionRelease {
+			m.scrollbarDragging = false
+			return m, nil
+		}
 		return m, nil
 	}
+
+	if msg.Button != tea.MouseButtonLeft {
+		return m, nil
+	}
+
+	if msg.Action == tea.MouseActionPress {
+		return m.handleMousePress(msg)
+	} else if msg.Action == tea.MouseActionRelease {
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleMousePress processes initial mouse press events.
+func (m Model) handleMousePress(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 	// Click on the menu bar → move focus + highlight the clicked button
 	if msg.Y == 0 {
@@ -112,6 +135,18 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			x += btnWidth
 		}
 		return m, nil
+	}
+
+	// Check if click is on the scrollbar (rightmost column)
+	colWidths := m.computeColWidths()
+	numDataCols := m.numDataCols()
+	totalCols := numDataCols + 2
+	tableWidth := 1 // leading │
+	for c := 0; c < totalCols; c++ {
+		tableWidth += colWidths[c] + 1 // +1 for │ separator
+	}
+	if msg.X >= tableWidth {
+		return m.startScrollbarDrag(msg.Y)
 	}
 
 	// Clicks on the top border, header, or separator are ignored
@@ -133,9 +168,6 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Map X to a column.
 	// Layout: │<col0>│<col1>│<col2>│…
 	// The leading │ sits at screen column 0; cell content begins at X=1.
-	colWidths := m.computeColWidths()
-	numDataCols := m.numDataCols()
-	totalCols := numDataCols + 2
 	xPos := msg.X - 1 // strip the leading │
 	if xPos >= 0 {
 		cumWidth := 0
@@ -151,6 +183,52 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.onSelectionChanged()
+	return m, nil
+}
+
+// startScrollbarDrag initiates a scrollbar drag operation.
+func (m Model) startScrollbarDrag(y int) (tea.Model, tea.Cmd) {
+	const tableDataStartY = 4
+	if y < tableDataStartY || len(m.keys) == 0 {
+		return m, nil
+	}
+
+	vis := m.visibleRows()
+	totalRows := len(m.keys)
+	if vis >= totalRows {
+		return m, nil // entire table fits, no scrolling needed
+	}
+
+	m.scrollbarDragging = true
+	m.scrollbarDragY = y
+	m.currentFocus = focusTable
+	return m.updateScrollbarDrag(y)
+}
+
+// updateScrollbarDrag updates the table offset during a scrollbar drag.
+func (m Model) updateScrollbarDrag(y int) (tea.Model, tea.Cmd) {
+	const tableDataStartY = 4
+	if len(m.keys) == 0 {
+		return m, nil
+	}
+
+	vis := m.visibleRows()
+	totalRows := len(m.keys)
+	if vis >= totalRows {
+		return m, nil
+	}
+
+	// Clamp Y to the valid scrollbar track range
+	minY := tableDataStartY
+	maxY := tableDataStartY + vis - 1
+	y = min(max(y, minY), maxY)
+
+	// Map Y position to tableOffset
+	trackPos := y - tableDataStartY
+	m.tableOffset = (trackPos * totalRows) / vis
+	m.tableOffset = min(m.tableOffset, max(0, totalRows-vis))
+
+	m.adjustOffset()
 	return m, nil
 }
 

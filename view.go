@@ -126,6 +126,32 @@ func (m Model) computeColWidths() []int {
 }
 
 // -----------------------------------------------------------------------
+// Scrollbar
+// -----------------------------------------------------------------------
+
+// getScrollbarChar returns the scrollbar character for a given track position.
+// trackPos ranges from 0 to visibleRows-1 (position in the scrollbar track).
+func (m Model) getScrollbarChar(trackPos int, visibleRows int) string {
+	if len(m.keys) == 0 {
+		return "░"
+	}
+	totalRows := len(m.keys)
+	if visibleRows >= totalRows {
+		return "█" // entire track is filled if all rows fit
+	}
+
+	// Calculate thumb dimensions in terms of track positions
+	thumbSize := max(1, (visibleRows*visibleRows)/totalRows)
+	thumbStart := (m.tableOffset * visibleRows) / totalRows
+
+	// Check if current track position is within the thumb
+	if trackPos >= thumbStart && trackPos < thumbStart+thumbSize {
+		return "█"
+	}
+	return "░"
+}
+
+// -----------------------------------------------------------------------
 // Table
 // -----------------------------------------------------------------------
 
@@ -192,12 +218,13 @@ func (m Model) viewTable() string {
 	hdr := renderRow(hdrCells, colWidths, hdrFg, m.MainBg, -1)
 
 	var lines []string
-	lines = append(lines, topLine)
-	lines = append(lines, hdr)
-	lines = append(lines, sepLine)
+	lines = append(lines, topLine+"░") // top border gets empty track char
+	lines = append(lines, hdr+"░")     // header gets empty track char
+	lines = append(lines, sepLine+"░") // separator gets empty track char
 
 	vis := m.visibleRows()
 	end := min(m.tableOffset+vis, len(m.keys))
+	trackPos := 0
 
 	for r := m.tableOffset; r < end; r++ {
 		dataRow := r + 1 // 1-based
@@ -241,7 +268,9 @@ func (m Model) viewTable() string {
 			selCol = m.activeColumn
 		}
 		tableRow := renderRow(cells, colWidths, cellFg, cellBg, selCol)
-		lines = append(lines, tableRow)
+		scrollbar := m.getScrollbarChar(trackPos, vis)
+		lines = append(lines, tableRow+scrollbar)
+		trackPos++
 	}
 
 	// Pad remaining rows so the table height stays constant
@@ -254,10 +283,12 @@ func (m Model) viewTable() string {
 	}
 	emptyRow += bordChar
 	for len(lines)-3 < vis { // -3 for topLine / hdr / sepLine
-		lines = append(lines, emptyRow)
+		scrollbar := m.getScrollbarChar(trackPos, vis)
+		lines = append(lines, emptyRow+scrollbar)
+		trackPos++
 	}
 
-	lines = append(lines, botLine)
+	lines = append(lines, botLine+"░") // bottom border gets empty track char
 
 	tbl := strings.Join(lines, "\n")
 	return lipgloss.NewStyle().Foreground(m.MainFg).Background(m.MainBg).Render(tbl)
