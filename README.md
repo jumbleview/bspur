@@ -69,7 +69,7 @@ Optional and limited integration with Git does exists. It provides chain git ope
 Integration does not use any Go git package, just invokes consol operation of  "git" commands. Setting the account with Git provider, creating remote directory (most likely private) etc. is out of scope for this application.
 
 ## Dependencies
-It is pure Go application (no cgo needed). All heavy lifting is done by three imported packages (and their dependencies):
+It is pure Go application (no cgo needed). All heavy lifting is done by  bubbletea clipboard package and its depdendecy:
 
 	"github.com/rivo/tview"
 	"github.com/gdamore/tcell/v2"

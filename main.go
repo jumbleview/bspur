@@ -9,9 +9,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.design/x/clipboard"
 )
 
 // -----------------------------------------------------------------------
@@ -75,6 +75,10 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, greeting)
 	}
+	err := clipboard.Init()
+	if err != nil {
+		panic(err)
+	}
 
 	var mainColors ColorValues
 	mainColors.Count = 2
@@ -94,6 +98,8 @@ func main() {
 		modes = append(modes, m)
 	}
 	flag.Var(&tsprMode, "md", "Mode: possible values are: "+strings.Join(modes, ","))
+
+	tsprMode.Set(modeSet[0])
 
 	var alterColumn int
 	flag.IntVar(&alterColumn, "ta", 0, "Table altering: n>0 insert column before n; n<0 delete column -n")
@@ -144,20 +150,19 @@ func main() {
 	} else {
 		_, errDir := os.Stat(filepath.Dir(cribName))
 		if errDir != nil {
-			clipboard.WriteAll("")
+			clipboard.Write(clipboard.FmtText, []byte(""))
 			panic(errDir)
 		}
 		m.currentFocus = focusPasswordNew
 		m.pwdTitle = "Create new Page"
 		m.needOldPassword = false
 	}
-
 	// Clipboard cleanup on SIGTERM / SIGINT
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		clipboard.WriteAll("")
+		clipboard.Write(clipboard.FmtText, []byte(""))
 		os.Exit(0)
 	}()
 
@@ -168,8 +173,8 @@ func main() {
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
-		clipboard.WriteAll("")
+		clipboard.Write(clipboard.FmtText, []byte(""))
 		panic(err)
 	}
-	clipboard.WriteAll("")
+	clipboard.Write(clipboard.FmtText, []byte(""))
 }

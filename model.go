@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.design/x/clipboard"
 )
 
 // -----------------------------------------------------------------------
@@ -312,7 +312,7 @@ func (m *Model) realCellText(row, col int) string {
 
 func (m *Model) copyActiveToClipboard() {
 	text := m.realCellText(m.activeRow, m.activeColumn)
-	clipboard.WriteAll(text)
+	clipboard.Write(clipboard.FmtText, []byte(text))
 }
 
 // numDataCols returns the number of value columns to display (at least 4).

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pkg/browser"
+	"golang.design/x/clipboard"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -210,7 +210,7 @@ func (m Model) handleTableKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyCtrlC:
-		clipboard.WriteAll("")
+		clipboard.Write(clipboard.FmtText, []byte(""))
 		return m, tea.Quit
 
 	case tea.KeyRunes:
@@ -264,7 +264,7 @@ func (m Model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyCtrlC:
-		clipboard.WriteAll("")
+		clipboard.Write(clipboard.FmtText, []byte(""))
 		return m, tea.Quit
 	}
 	return m, nil
@@ -395,14 +395,14 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 
 	case "Exit":
 		if !m.dirty {
-			clipboard.WriteAll("")
+			clipboard.Write(clipboard.FmtText, []byte(""))
 			return m, tea.Quit
 		}
 		m.confirmText = "Page not saved. Exit?"
 		m.confirmOK = "Exit"
 		m.confirmCancel = "Cancel"
 		m.confirmYesFn = func() tea.Cmd {
-			clipboard.WriteAll("")
+			clipboard.Write(clipboard.FmtText, []byte(""))
 			return tea.Quit
 		}
 		m.confirmNoFn = func() tea.Cmd { return nil }
@@ -463,11 +463,11 @@ func (m Model) handlePwdEnterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyEsc:
-		clipboard.WriteAll("")
+		clipboard.Write(clipboard.FmtText, []byte(""))
 		return m, tea.Quit
 	case tea.KeyEnter:
 		if m.pwdCursor == 2 {
-			clipboard.WriteAll("")
+			clipboard.Write(clipboard.FmtText, []byte(""))
 			return m, tea.Quit
 		}
 		return m.submitEnterPassword()
@@ -480,7 +480,7 @@ func (m Model) handlePwdEnterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else if m.pwdCursor == 1 {
 			return m.submitEnterPassword()
 		} else {
-			clipboard.WriteAll("")
+			clipboard.Write(clipboard.FmtText, []byte(""))
 			return m, tea.Quit
 		}
 		return m, nil
@@ -735,7 +735,7 @@ func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.editVisibility = "v"
 			}
 			if m.editCursor > 0 {
-				clipboard.WriteAll(m.editValues[m.editCursor-1])
+				clipboard.Write(clipboard.FmtText, []byte(m.editValues[m.editCursor-1]))
 			}
 		} else {
 			return m.handleEditButton()
