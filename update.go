@@ -175,7 +175,7 @@ func (m Model) handleTableKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case ModeClipSelect:
 			m.copyActiveToClipboard()
 		case ModeVisibleEnter:
-			// reveal handled in View
+			m.enteredCell = true
 		}
 		return m, nil
 
@@ -234,6 +234,9 @@ func (m Model) handleTableKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // onSelectionChanged implements copy-on-select / visible-on-select behaviour.
 func (m *Model) onSelectionChanged() {
+	if m.mode == ModeVisibleEnter {
+		m.enteredCell = false
+	}
 	if len(m.keys) == 0 {
 		return
 	}

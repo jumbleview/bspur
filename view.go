@@ -217,11 +217,15 @@ func (m Model) viewTable() string {
 			}
 			if rowVis == "h" && len(val) > 0 {
 				// Reveal the active cell's real value in the appropriate modes
-				if (m.mode == ModeVisibleSelect ||
-					(m.mode == ModeVisibleEnter && m.currentFocus == focusTable)) &&
-					dataRow == m.activeRow && c == m.activeColumn {
-					// show real value
-				} else {
+				show := false
+				if dataRow == m.activeRow && c == m.activeColumn && m.currentFocus == focusTable {
+					if m.mode == ModeVisibleSelect {
+						show = true
+					} else if m.mode == ModeVisibleEnter && m.enteredCell {
+						show = true
+					}
+				}
+				if !show {
 					val = hiddenText
 				}
 			}

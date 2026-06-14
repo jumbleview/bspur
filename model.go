@@ -102,10 +102,11 @@ type Model struct {
 	commits    []string
 
 	// ---- navigation ----
-	activeRow    int // 1-based, row 0 is header
-	activeColumn int // 1-based, col 0 is row-number
-	tableOffset  int // first visible data row (0-based)
-	menuIndex    int // focused menu button (0-based)
+	activeRow    int  // 1-based, row 0 is header
+	activeColumn int  // 1-based, col 0 is row-number
+	tableOffset  int  // first visible data row (0-based)
+	menuIndex    int  // focused menu button (0-based)
+	enteredCell  bool // user pressed Enter on this cell in visible-on-enter mode
 
 	// ---- mode ----
 	mode      string
