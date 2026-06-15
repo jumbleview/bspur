@@ -257,6 +257,36 @@ func (m Model) handleTableKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.KeyPgUp:
+		m.activeRow -= m.visibleRows()
+		if m.activeRow < 1 {
+			m.activeRow = 1
+		}
+		m.adjustOffset()
+		m.onSelectionChanged()
+		return m, nil
+
+	case tea.KeyPgDown:
+		m.activeRow += m.visibleRows()
+		if m.activeRow > len(m.keys) {
+			m.activeRow = len(m.keys)
+		}
+		m.adjustOffset()
+		m.onSelectionChanged()
+		return m, nil
+
+	case tea.KeyHome:
+		m.activeRow = 1
+		m.adjustOffset()
+		m.onSelectionChanged()
+		return m, nil
+
+	case tea.KeyEnd:
+		m.activeRow = len(m.keys)
+		m.adjustOffset()
+		m.onSelectionChanged()
+		return m, nil
+
 	case tea.KeyUp:
 		if m.activeRow > 1 {
 			m.activeRow--
