@@ -47,6 +47,13 @@ func (m Model) viewMain() string {
 // -----------------------------------------------------------------------
 // Top menu
 // -----------------------------------------------------------------------
+func (m Model) computeRowLength() int {
+	rValue := 0
+	for _, num := range m.computeColWidths() {
+		rValue += num + 1
+	}
+	return rValue + 2
+}
 
 func (m Model) viewTopMenu() string {
 	btns := m.menuButtons()
@@ -61,18 +68,20 @@ func (m Model) viewTopMenu() string {
 		}
 		parts = append(parts, s.Render(label))
 	}
+	w := m.computeRowLength()
 	bar := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 	return lipgloss.NewStyle().
 		Background(m.MainBg).
-		Width(m.termWidth).
+		Width(w).
 		Render(bar)
 }
 
 // Information stored in model to be printed on the botom line
 func (m Model) viewInfoPlace() string {
+	w := m.computeRowLength()
 	return lipgloss.NewStyle().
 		Background(m.MainBg).
-		Width(m.termWidth).
+		Width(w).
 		Render(InfoPlace)
 }
 
@@ -162,7 +171,7 @@ func (m Model) viewTable() string {
 	colWidths := m.computeColWidths()
 
 	// --- Styling ---
-	borderStyle := lipgloss.NewStyle().Foreground(m.AccentFg)
+	borderStyle := lipgloss.NewStyle().Foreground(m.MainFg).Background(m.MainBg)
 	bordChar := borderStyle.Render("│")
 	hdrFg := m.AccentFg
 	cellFg := m.MainFg
@@ -613,7 +622,7 @@ func (m Model) viewGitResult() string {
 func (m Model) boxStyle(width int, _ string) lipgloss.Style {
 	return lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(m.AccentFg).
+		BorderForeground(m.AccentFg).BorderBackground(m.FormBg).
 		Background(m.FormBg).
 		Foreground(m.FormFg).
 		Width(width)
