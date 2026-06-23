@@ -396,7 +396,7 @@ func (m Model) viewPasswordEnter() string {
 	}
 	sep := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
 	btns := lipgloss.JoinHorizontal(lipgloss.Top,
-		submitStyle.Render("[ Submit ]"), sep, cancelStyle.Render("[ Cancel ]"))
+		submitStyle.Render(" Submit "), sep, cancelStyle.Render(" Cancel "))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		lineStyle.Render(""),
@@ -454,7 +454,7 @@ func (m Model) viewPasswordNew() string {
 	}
 	sep := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
 	btns := lipgloss.JoinHorizontal(lipgloss.Top,
-		submitStyle.Render("[ Submit ]"), sep, cancelStyle.Render("[ Cancel ]"))
+		submitStyle.Render(" Submit "), sep, cancelStyle.Render(" Cancel "))
 
 	var lines []string
 	lines = append(lines, lineStyle.Render(""))
@@ -517,7 +517,7 @@ func (m Model) viewEditForm() string {
 		if m.editCursor == numFields+i {
 			s = s.Reverse(true)
 		}
-		btns = append(btns, s.Render("[ "+bl+" ]"))
+		btns = append(btns, s.Render(" "+bl+" "))
 	}
 	lines = append(lines, "")
 	lines = append(lines, " "+lipgloss.JoinHorizontal(lipgloss.Top, btns...))
@@ -577,10 +577,10 @@ func (m Model) viewConfirm() string {
 	} else {
 		cancelStyle = cancelStyle.Reverse(true)
 	}
-	okBtn := okStyle.Render("[ " + m.confirmOK + " ]")
+	okBtn := okStyle.Render(" " + m.confirmOK + " ")
 	var btns string
 	if m.confirmCancel != "" {
-		cancelBtn := cancelStyle.Render("[ " + m.confirmCancel + " ]")
+		cancelBtn := cancelStyle.Render(" " + m.confirmCancel + " ")
 		sep := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
 		btns = lipgloss.JoinHorizontal(lipgloss.Top, okBtn, sep, cancelBtn)
 	} else {
@@ -612,7 +612,7 @@ func (m Model) viewGitResult() string {
 		"",
 		" "+msgStyle.Render(m.gitResultText),
 		"",
-		" "+btnStyle.Render("[ OK ]"),
+		" "+btnStyle.Render(" OK "),
 		"",
 	)
 	return m.boxStyle(len(m.gitResultText)+8, " Git ").Render(content)
