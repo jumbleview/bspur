@@ -898,18 +898,18 @@ func (m Model) handleModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyUp:
 		if m.modeCursor > 0 {
 			m.modeCursor--
-			m.mode = modeSet[m.modeCursor]
-			m.modeIndex = m.modeCursor
 		}
 		return m, nil
 	case tea.KeyDown:
 		if m.modeCursor < 3 {
 			m.modeCursor++
-			m.mode = modeSet[m.modeCursor]
-			m.modeIndex = m.modeCursor
 		}
 		return m, nil
-	case tea.KeyEnter, tea.KeyEsc:
+	case tea.KeyEnter:
+		m.mode = modeSet[m.modeCursor]
+		m.modeIndex = m.modeCursor
+		fallthrough
+	case tea.KeyEsc:
 		m.currentFocus = focusTable
 		if len(m.keys) == 0 {
 			m.currentFocus = focusMenu
