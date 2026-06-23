@@ -285,7 +285,9 @@ func (m Model) viewTable() string {
 	// Pad remaining rows so the table height stays constant
 	emptyRow := bordChar
 	for c, w := range colWidths {
-		emptyRow += strings.Repeat(" ", w)
+		emptyCellText := strings.Repeat(" ", w)
+		cellStyle := lipgloss.NewStyle().Foreground(cellFg).Background(cellBg)
+		emptyRow += cellStyle.Render(emptyCellText)
 		if c < totalCols-1 {
 			emptyRow += bordChar
 		}
@@ -486,7 +488,8 @@ func (m Model) viewEditForm() string {
 			d = append(d[:cp], append([]rune{'_'}, d[cp:]...)...)
 			display = string(d)
 		}
-		return " " + lStyle.Render(label) + " " + fs.Render(display)
+		gap := lipgloss.NewStyle().Background(m.FormBg).Render(" ")
+		return " " + lStyle.Render(label) + gap + fs.Render(display)
 	}
 
 	var lines []string
@@ -522,7 +525,7 @@ func (m Model) viewEditForm() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	h := len(lines) + 2
-	return m.boxStyle(56, " Edit Record ").Height(h).Render(content)
+	return m.boxStyle(52, " Edit Record ").Height(h).Render(content)
 }
 
 // -----------------------------------------------------------------------
