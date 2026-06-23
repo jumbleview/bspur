@@ -471,7 +471,7 @@ func (m Model) viewPasswordNew() string {
 // -----------------------------------------------------------------------
 
 func (m Model) viewEditForm() string {
-	fStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormInputBg).Width(28)
+	fStyle := lipgloss.NewStyle().Foreground(m.FormFg).Background(m.FormInputBg).Width(31)
 	lStyle := lipgloss.NewStyle().Foreground(m.FormFg)
 
 	renderField := func(label, val string, active bool, hidden bool, textCursor int) string {
@@ -525,7 +525,7 @@ func (m Model) viewEditForm() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	h := len(lines) + 2
-	return m.boxStyle(52, " Edit Record ").Height(h).Render(content)
+	return m.boxStyle(50, " Edit Record ").Height(h).Render(content)
 }
 
 // -----------------------------------------------------------------------
