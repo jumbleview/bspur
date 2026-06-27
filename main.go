@@ -66,6 +66,12 @@ func (v *ModeValue) Set(s string) error {
 	return fmt.Errorf("mode %s is unknown", s)
 }
 
+// ConsoleWidth is console horizontal dimension
+const ConsoleWidth = 116
+
+// ConsoleHeight is console vertical dimension
+const ConsoleHeight = 45
+
 // -----------------------------------------------------------------------
 // main
 // -----------------------------------------------------------------------
@@ -129,7 +135,7 @@ func main() {
 	}
 
 	cribName := cmd[0]
-	//SetDimensions(ConsoleWidth, ConsoleHeight)
+	SetDimensions(ConsoleWidth, ConsoleHeight)
 
 	// Resolve absolute path so cribPath is always valid
 	if !filepath.IsAbs(cribName) {

@@ -180,20 +180,21 @@ func (m Model) viewTable() string {
 	// renderRow renders a single table row.
 	// selCol >= 0 highlights that column index (0-based into cells slice).
 	// selCol == -1 means no cell is highlighted.
-	renderRow := func(cells []string, widths []int, fg, bg lipgloss.Color, selCol int) string {
+	renderRow := func(cells []string, widths []int, fg, bg lipgloss.Color, selCol int, isFaint bool) string {
 		var cols []string
 		for i, cell := range cells {
 			text := centerPad(cell, widths[i])
 			var style lipgloss.Style
 			if i == selCol {
 				// Highlight only the active cell: TrackingFg + reverse
+				// m.TrackingFg
 				style = lipgloss.NewStyle().
-					Foreground(m.TrackingFg).
+					Foreground(m.MainFg).
 					Background(bg).
-					Bold(true).
+					Bold(false).
 					Reverse(true)
 			} else {
-				style = lipgloss.NewStyle().Foreground(fg).Background(bg)
+				style = lipgloss.NewStyle().Foreground(fg).Background(bg).Bold(false).Faint(isFaint)
 			}
 			cols = append(cols, style.Render(text))
 		}
@@ -224,7 +225,7 @@ func (m Model) viewTable() string {
 	for c := 2; c < totalCols; c++ {
 		hdrCells[c] = fmt.Sprintf(FmtFieldTitle, c-1)
 	}
-	hdr := renderRow(hdrCells, colWidths, hdrFg, m.MainBg, -1)
+	hdr := renderRow(hdrCells, colWidths, hdrFg, m.MainBg, -1, false)
 
 	var lines []string
 	lines = append(lines, topLine+"░") // top border gets empty track char
@@ -276,7 +277,11 @@ func (m Model) viewTable() string {
 		if m.currentFocus == focusTable && dataRow == m.activeRow {
 			selCol = m.activeColumn
 		}
-		tableRow := renderRow(cells, colWidths, cellFg, cellBg, selCol)
+		isFaint := false
+		if m.currentFocus != focusTable && m.currentFocus != focusMenu {
+			isFaint = true
+		}
+		tableRow := renderRow(cells, colWidths, cellFg, cellBg, selCol, isFaint)
 		scrollbar := m.getScrollbarChar(trackPos, vis)
 		lines = append(lines, tableRow+scrollbar)
 		trackPos++
@@ -625,7 +630,7 @@ func (m Model) viewGitResult() string {
 func (m Model) boxStyle(width int, _ string) lipgloss.Style {
 	return lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(m.AccentFg).BorderBackground(m.FormBg).
+		BorderForeground(m.FormInputBg).BorderBackground(m.FormBg).
 		Background(m.FormBg).
 		Foreground(m.FormFg).
 		Width(width)

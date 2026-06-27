@@ -119,8 +119,8 @@ type Model struct {
 	cribPath string
 	cribBase string
 	hasGit   bool
-	dirty    bool // unsaved changes
-
+	dirty    bool // if 'true' there are unsaved changes
+	gitty    bool // if 'true' cribsheet is updated and saved but not commited to Git
 	// ---- password state ----
 	passwd          string
 	needOldPassword bool
@@ -178,8 +178,8 @@ func initialModel(cribName string, mode string, modeIdx int, theme SpurTheme, al
 		mode:         mode,
 		modeIndex:    modeIdx,
 		SpurTheme:    theme,
-		termWidth:    109,
-		termHeight:   45,
+		termWidth:    ConsoleWidth,
+		termHeight:   ConsoleHeight,
 		activeRow:    1,
 		activeColumn: 1,
 	}
@@ -238,6 +238,7 @@ func (m *Model) updateRecord(key string, values []string, vis string) int {
 		m.records[key] = values
 		m.visibility[key] = vis
 	}
+	m.dirty = true
 	m.keys = m.keys[:0]
 	m.width = 0
 	for k, v := range m.records {
@@ -331,11 +332,19 @@ func (m *Model) saveMenuLabel() string {
 	return "Save"
 }
 
+// gitMenuLabel returns "Git!" when gitty, "Git" otherwise.
+func (m *Model) gitMenuLabel() string {
+	if m.gitty {
+		return "Git!"
+	}
+	return "Git"
+}
+
 // menuButtons returns the ordered list of top-menu button labels.
 func (m *Model) menuButtons() []string {
 	btns := []string{"Select", firstToUpper(m.modeSet()[m.modeIndex]), "WWW", "Edit", "Delete", m.saveMenuLabel()}
 	if m.hasGit {
-		btns = append(btns, "Git")
+		btns = append(btns, m.gitMenuLabel())
 	}
 	btns = append(btns, "Password", "Exit")
 	return btns

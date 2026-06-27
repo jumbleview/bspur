@@ -451,7 +451,6 @@ func (m Model) activateMenuButton(label string) (tea.Model, tea.Cmd) {
 				m.clampRow()
 				m.activeColumn = 1
 				m.adjustOffset()
-				m.dirty = true
 				return nil
 			}
 			m.confirmNoFn = func() tea.Cmd { return nil }
@@ -932,8 +931,15 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.confirmYesFn != nil {
 				cmd = m.confirmYesFn()
 			}
+			if m.currentFocus == focusConfirmDelete {
+				m.dirty = true
+			}
 			if m.currentFocus == focusConfirmSave {
 				m.dirty = false
+				m.gitty = true
+			}
+			if m.currentFocus == focusConfirmGit {
+				m.gitty = false
 			}
 		} else {
 			if m.confirmNoFn != nil {
