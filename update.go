@@ -933,6 +933,12 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			if m.currentFocus == focusConfirmDelete {
 				m.dirty = true
+				// Rebuild keys from the shared map (closure updated it via pointer receiver)
+				m.rebuildKeys()
+				m.activeRow--
+				m.clampRow()
+				m.activeColumn = 1
+				m.adjustOffset()
 			}
 			if m.currentFocus == focusConfirmSave {
 				m.dirty = false

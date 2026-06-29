@@ -359,6 +359,21 @@ func firstToUpper(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
+// rebuildKeys re-derives the sorted key slice from m.records and recomputes m.width.
+func (m *Model) rebuildKeys() {
+	m.keys = m.keys[:0]
+	m.width = 0
+	for k, v := range m.records {
+		m.keys = append(m.keys, k)
+		if m.width < len(v) {
+			m.width = len(v)
+		}
+	}
+	sort.Slice(m.keys, func(i, j int) bool {
+		return strings.ToLower(m.keys[i]) < strings.ToLower(m.keys[j])
+	})
+}
+
 // clampRow keeps activeRow in valid range [1, len(keys)].
 func (m *Model) clampRow() {
 	if len(m.keys) == 0 {
